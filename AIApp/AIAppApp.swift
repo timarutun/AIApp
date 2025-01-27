@@ -13,7 +13,7 @@ struct AIAppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            VoiceSummarizerView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
