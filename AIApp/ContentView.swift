@@ -26,7 +26,7 @@ struct ContentView: View {
                         Label("Settings", systemImage: "gear")
                     }
             }
-            .navigationTitle("AI Voice Summarizer")
+            .navigationTitle("")
         }
     }
 }
@@ -37,7 +37,8 @@ struct RecordingView: View {
             Spacer()
 
             Text("Press the button below to start recording your voice note.")
-                .font(.headline)
+                .font(.subheadline)
+                .foregroundStyle(.gray)
                 .multilineTextAlignment(.center)
                 .padding()
 
