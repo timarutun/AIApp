@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct ContentView: View {
     var body: some View {
@@ -32,6 +33,11 @@ struct ContentView: View {
 }
 
 struct RecordingView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @State private var isRecording = false
+    @State private var audioRecorder: AVAudioRecorder?
+    @State private var recordingURL: URL?
+
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -43,13 +49,13 @@ struct RecordingView: View {
                 .padding()
 
             Button(action: {
-                // Action for recording
+                isRecording ? stopRecording() : startRecording()
             }) {
                 Circle()
-                    .fill(Color.red)
+                    .fill(isRecording ? Color.gray : Color.red)
                     .frame(width: 80, height: 80)
                     .overlay(
-                        Image(systemName: "mic.fill")
+                        Image(systemName: isRecording ? "stop.fill" : "mic.fill")
                             .foregroundColor(.white)
                             .font(.largeTitle)
                     )
@@ -61,19 +67,67 @@ struct RecordingView: View {
         .padding()
         .navigationTitle("Record")
     }
+
+    private func startRecording() {
+        let audioFilename = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).m4a")
+        let settings = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 2,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+
+        do {
+            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.record()
+            recordingURL = audioFilename
+            isRecording = true
+        } catch {
+            print("Error starting recording: \(error.localizedDescription)")
+        }
+    }
+
+    private func stopRecording() {
+        audioRecorder?.stop()
+        isRecording = false
+
+        if let recordingURL = recordingURL {
+            saveRecording(url: recordingURL)
+        }
+    }
+
+    private func saveRecording(url: URL) {
+        let newRecording = Recording(context: viewContext)
+        newRecording.id = UUID()
+        newRecording.timestamp = Date()
+        newRecording.fileURL = url.absoluteString
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error saving recording: \(error.localizedDescription)")
+        }
+    }
 }
 
 struct NotesListView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \Recording.timestamp, ascending: false)],
+        animation: .default)
+    private var recordings: FetchedResults<Recording>
+
     var body: some View {
         List {
-            ForEach(0..<5) { index in
-                NavigationLink(destination: NoteDetailView(noteText: "Summary for note #\(index + 1)")) {
+            ForEach(recordings) { recording in
+                NavigationLink(destination: NoteDetailView(recording: recording)) {
                     VStack(alignment: .leading) {
-                        Text("Note #\(index + 1)")
+                        Text("Recording \(recording.timestamp ?? Date(), formatter: itemFormatter)")
                             .font(.headline)
-                        Text("Short summary of the note...")
+                        Text(recording.fileURL ?? "")
                             .font(.subheadline)
                             .foregroundColor(.gray)
+                            .lineLimit(1)
                     }
                 }
             }
@@ -83,17 +137,39 @@ struct NotesListView: View {
 }
 
 struct NoteDetailView: View {
-    var noteText: String
+    var recording: Recording
+    @State private var audioPlayer: AVAudioPlayer?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text(noteText)
-                .font(.body)
+        VStack(spacing: 20) {
+            Text("Recorded on \(recording.timestamp ?? Date(), formatter: itemFormatter)")
+                .font(.headline)
+
+            Button(action: playRecording) {
+                Text("Play Recording")
+                    .font(.title2)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
 
             Spacer()
         }
         .padding()
         .navigationTitle("Note Detail")
+    }
+
+    private func playRecording() {
+        guard let urlString = recording.fileURL,
+              let url = URL(string: urlString) else { return }
+
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.play()
+        } catch {
+            print("Error playing recording: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -112,6 +188,13 @@ struct SettingsView: View {
         .navigationTitle("Settings")
     }
 }
+
+private let itemFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .short
+    formatter.timeStyle = .short
+    return formatter
+}()
 
 
 #Preview {
