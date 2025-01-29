@@ -27,7 +27,6 @@ struct ContentView: View {
                         Label("Settings", systemImage: "gear")
                     }
             }
-            .navigationTitle("")
         }
     }
 }
@@ -100,7 +99,7 @@ struct RecordingView: View {
         let newRecording = Recording(context: viewContext)
         newRecording.id = UUID()
         newRecording.timestamp = Date()
-        newRecording.fileURL = url.absoluteString
+        newRecording.fileURL = url.path // Save file path
 
         do {
             try viewContext.save()
@@ -120,15 +119,20 @@ struct NotesListView: View {
     var body: some View {
         List {
             ForEach(recordings) { recording in
-                NavigationLink(destination: NoteDetailView(recording: recording)) {
-                    VStack(alignment: .leading) {
-                        Text("Recording \(recording.timestamp ?? Date(), formatter: itemFormatter)")
-                            .font(.headline)
-                        Text(recording.fileURL ?? "")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
+                if let timestamp = recording.timestamp, let fileURL = recording.fileURL {
+                    NavigationLink(destination: NoteDetailView(recording: recording)) {
+                        VStack(alignment: .leading) {
+                            Text("Recording \(timestamp, formatter: itemFormatter)")
+                                .font(.headline)
+                            Text(fileURL)
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .lineLimit(1)
+                        }
                     }
+                } else {
+                    Text("Invalid Recording")
+                        .foregroundColor(.red)
                 }
             }
         }
@@ -161,15 +165,23 @@ struct NoteDetailView: View {
     }
 
     private func playRecording() {
-        guard let urlString = recording.fileURL,
-              let url = URL(string: urlString) else { return }
-
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.play()
-        } catch {
-            print("Error playing recording: \(error.localizedDescription)")
+        guard let urlString = recording.fileURL else {
+            print("Invalid file URL")
+            return
         }
+        let url = URL(fileURLWithPath: urlString)
+
+        if FileManager.default.fileExists(atPath: url.path) {
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: url)
+                audioPlayer?.play()
+            } catch {
+                print("Error playing recording: \(error.localizedDescription)")
+            }
+        } else {
+            print("File does not exist at path: \(url.path)")
+        }
+        print("File path: \(url.path)")
     }
 }
 
@@ -195,7 +207,6 @@ private let itemFormatter: DateFormatter = {
     formatter.timeStyle = .short
     return formatter
 }()
-
 
 #Preview {
     ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
