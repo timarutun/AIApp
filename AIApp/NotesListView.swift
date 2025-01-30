@@ -14,32 +14,87 @@ struct NotesListView: View {
         sortDescriptors: [NSSortDescriptor(keyPath: \Recording.timestamp, ascending: false)],
         animation: .default)
     private var recordings: FetchedResults<Recording>
+    
+    @State private var showingDeleteAlert = false
+    @State private var recordingToDelete: Recording?
 
     var body: some View {
-        List {
-            ForEach(recordings) { recording in
-                NavigationLink(destination: NoteDetailView(recording: recording)) {
-                    VStack(alignment: .leading) {
-                        Text("Recording \(recording.timestamp ?? Date(), formatter: itemFormatter)")
-                            .font(.headline)
-                        Text(recording.fileURL ?? "")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    ForEach(recordings) { recording in
+                        NavigationLink(destination: NoteDetailView(recording: recording)) {
+                            VStack {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Recording on \(recording.timestamp ?? Date(), formatter: itemFormatter)")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        HStack {
+                                            Text(recording.fileURL ?? "No File")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                            Spacer()
+                                        }
+                                    }
+                                    
+                                    Spacer()
+
+                                    // Delete Button
+                                    Button(action: {
+                                        recordingToDelete = recording
+                                        showingDeleteAlert = true
+                                    }) {
+                                        Image(systemName: "trash.fill")
+                                            .foregroundColor(.red)
+                                            .padding(10)
+                                            .background(Color.white)
+                                            .clipShape(Circle())
+                                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
+                                    }
+                                }
+                                .padding(15)
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
+                                .padding(.horizontal)
+                                .padding(.vertical, 10)
+                            }
+                        }
+                        .contextMenu {
+                            Button(action: {
+                                recordingToDelete = recording
+                                showingDeleteAlert = true
+                            }) {
+                                Text("Delete Recording")
+                                Image(systemName: "trash")
+                            }
+                        }
                     }
                 }
+                .padding(.top, 10)
             }
-            .onDelete(perform: deleteRecordings)
+            .navigationTitle("Notes")
+            .background(Color(UIColor.systemGroupedBackground))
+            .alert(isPresented: $showingDeleteAlert) {
+                Alert(
+                    title: Text("Delete Recording"),
+                    message: Text("Are you sure you want to delete this recording? This action cannot be undone."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if let recordingToDelete = recordingToDelete {
+                            deleteRecording(recordingToDelete)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
         }
-        .navigationTitle("Notes")
     }
 
-    private func deleteRecordings(at offsets: IndexSet) {
-        for index in offsets {
-            let recording = recordings[index]
-            viewContext.delete(recording)
-        }
-
+    private func deleteRecording(_ recording: Recording) {
+        viewContext.delete(recording)
         do {
             try viewContext.save()
         } catch {
@@ -47,6 +102,7 @@ struct NotesListView: View {
         }
     }
 }
+
 
 private let itemFormatter: DateFormatter = {
     let formatter = DateFormatter()
@@ -61,7 +117,6 @@ struct NotesListView_Previews: PreviewProvider {
     static var previews: some View {
         let context = PersistenceController.preview.container.viewContext
         
-        // Creating mock data for the preview
         let recording1 = Recording(context: context)
         recording1.id = UUID()
         recording1.timestamp = Date()
@@ -73,7 +128,7 @@ struct NotesListView_Previews: PreviewProvider {
         recording2.fileURL = "/mock/path/recording2.m4a"
         
         do {
-            try context.save() // Save mock data
+            try context.save()
         } catch {
             print("Error saving mock data: \(error.localizedDescription)")
         }
