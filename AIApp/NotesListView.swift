@@ -21,7 +21,7 @@ struct NotesListView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 10) {
                     ForEach(recordings) { recording in
                         NavigationLink(destination: NoteDetailView(recording: recording)) {
                             VStack {
@@ -50,9 +50,6 @@ struct NotesListView: View {
                                         Image(systemName: "trash.fill")
                                             .foregroundColor(.red)
                                             .padding(10)
-                                            .background(Color.white)
-                                            .clipShape(Circle())
-                                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
                                     }
                                 }
                                 .padding(15)
