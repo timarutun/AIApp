@@ -17,10 +17,19 @@ struct NoteDetailView: View {
             Text("Recorded on \(recording.timestamp ?? Date(), formatter: itemFormatter)")
                 .font(.headline)
 
+            Text(recording.transcription ?? "No transcript available")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(UIColor.systemGray6))
+                .cornerRadius(10)
+
             Button(action: playRecording) {
                 Text("Play Recording")
                     .font(.title2)
                     .padding()
+                    .frame(maxWidth: .infinity)
                     .background(Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(10)

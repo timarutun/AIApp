@@ -8,24 +8,61 @@
 import SwiftUI
 
 struct SettingsView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Settings")
-                .font(.largeTitle)
-                .bold()
+    @AppStorage("selectedLanguage") private var selectedLanguage = "en-US"
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
-            Text("This is a placeholder for settings.")
-                .font(.subheadline)
-                .foregroundStyle(.gray)
-            
-            Spacer()
+    let languages = ["en-US": "English", "ru-RU": "Русский"]
+
+    var body: some View {
+        Form {
+            Section(header: Text("Language")) {
+                NavigationLink(destination: LanguageSelectionView(selectedLanguage: $selectedLanguage)) {
+                    HStack {
+                        Text("App Language")
+                        Spacer()
+                        Text(languages[selectedLanguage] ?? selectedLanguage)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            Section(header: Text("Appearance")) {
+                Toggle("Dark Mode", isOn: $isDarkMode)
+            }
         }
-        .padding()
         .navigationTitle("Settings")
+        .preferredColorScheme(isDarkMode ? .dark : .light)
+    }
+}
+
+// Language selection screen
+struct LanguageSelectionView: View {
+    @Binding var selectedLanguage: String
+    let languages = ["en-US": "English", "ru-RU": "Русский"]
+
+    var body: some View {
+        List {
+            ForEach(languages.keys.sorted(), id: \.self) { key in
+                HStack {
+                    Text(languages[key] ?? key)
+                    Spacer()
+                    if key == selectedLanguage {
+                        Image(systemName: "checkmark")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedLanguage = key
+                }
+            }
+        }
+        .navigationTitle("Language")
     }
 }
 
 #Preview {
-    SettingsView()
+    NavigationView {
+        SettingsView()
+    }
 }
-

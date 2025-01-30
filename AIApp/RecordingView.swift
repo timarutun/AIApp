@@ -16,19 +16,20 @@ struct RecordingView: View {
     @State private var speechText: String = ""
     @State private var isAuthorized = false
     @StateObject private var speechManager = SpeechManager()
-    @State private var selectedLanguage = "en-US"
-
-    let languages = ["en-US": "🇺🇸", "ru-RU": "🇷🇺"]
+    
+    @AppStorage("selectedLanguage") private var selectedLanguage = "en-US"
 
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
 
-            Text("Press the button below to start recording your voice note.")
-                .font(.subheadline)
-                .foregroundStyle(.gray)
-                .multilineTextAlignment(.center)
-                .padding()
+            if !isRecording {
+                Text("Press the button below to start recording your voice note.")
+                    .font(.subheadline)
+                    .foregroundStyle(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding()
+            }
 
             Button(action: {
                 isRecording ? stopRecording() : startRecording()
@@ -64,22 +65,6 @@ struct RecordingView: View {
         }
         .padding()
         .navigationTitle("Record")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    ForEach(languages.keys.sorted(), id: \.self) { key in
-                        Button(action: {
-                            selectedLanguage = key
-                        }) {
-                            Text("\(languages[key] ?? "") \(key)")
-                        }
-                    }
-                } label: {
-                    Text(languages[selectedLanguage] ?? "🌍")
-                        .font(.title3)
-                }
-            }
-        }
         .onAppear {
             speechManager.requestSpeechRecognitionPermission { authorized in
                 isAuthorized = authorized
