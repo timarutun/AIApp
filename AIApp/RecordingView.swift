@@ -7,7 +7,6 @@
 
 import SwiftUI
 import AVFoundation
-import Speech
 
 struct RecordingView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -17,7 +16,10 @@ struct RecordingView: View {
     @State private var speechText: String = ""
     @State private var isAuthorized = false
     @StateObject private var speechManager = SpeechManager()
-    
+    @State private var selectedLanguage = "en-US"
+
+    let languages = ["en-US": "🇺🇸", "ru-RU": "🇷🇺"]
+
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -29,11 +31,7 @@ struct RecordingView: View {
                 .padding()
 
             Button(action: {
-                if isRecording {
-                    stopRecording()
-                } else {
-                    startRecording()
-                }
+                isRecording ? stopRecording() : startRecording()
             }) {
                 Circle()
                     .fill(isRecording ? Color.gray : Color.red)
@@ -66,6 +64,22 @@ struct RecordingView: View {
         }
         .padding()
         .navigationTitle("Record")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(languages.keys.sorted(), id: \.self) { key in
+                        Button(action: {
+                            selectedLanguage = key
+                        }) {
+                            Text("\(languages[key] ?? "") \(key)")
+                        }
+                    }
+                } label: {
+                    Text(languages[selectedLanguage] ?? "🌍")
+                        .font(.title3)
+                }
+            }
+        }
         .onAppear {
             speechManager.requestSpeechRecognitionPermission { authorized in
                 isAuthorized = authorized
@@ -94,7 +108,7 @@ struct RecordingView: View {
             recordingURL = audioFilename
             isRecording = true
 
-            speechManager.startRecognition { recognizedText in
+            speechManager.startRecognition(language: selectedLanguage) { recognizedText in
                 DispatchQueue.main.async {
                     speechText = recognizedText
                 }
@@ -125,59 +139,6 @@ struct RecordingView: View {
         } catch {
             print("Error saving recording: \(error.localizedDescription)")
         }
-    }
-}
-
-class SpeechManager: ObservableObject {
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-    private var audioEngine: AVAudioEngine?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-
-    func requestSpeechRecognitionPermission(completion: @escaping (Bool) -> Void) {
-        SFSpeechRecognizer.requestAuthorization { status in
-            DispatchQueue.main.async {
-                completion(status == .authorized)
-            }
-        }
-    }
-
-    func startRecognition(completion: @escaping (String) -> Void) {
-        guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else { return }
-
-        audioEngine = AVAudioEngine()
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let audioEngine = audioEngine, let recognitionRequest = recognitionRequest else { return }
-
-        recognitionRequest.shouldReportPartialResults = true
-
-        let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, _) in
-            recognitionRequest.append(buffer)
-        }
-
-        audioEngine.prepare()
-        try? audioEngine.start()
-
-        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
-            if let result = result {
-                DispatchQueue.main.async {
-                    completion(result.bestTranscription.formattedString)
-                }
-            }
-            if error != nil {
-                self.stopRecognition()
-            }
-        }
-    }
-
-    func stopRecognition() {
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        audioEngine?.stop()
-        audioEngine?.inputNode.removeTap(onBus: 0)
-        recognitionRequest?.endAudio()
     }
 }
 
