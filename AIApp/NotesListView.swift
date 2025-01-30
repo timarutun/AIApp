@@ -29,8 +29,22 @@ struct NotesListView: View {
                     }
                 }
             }
+            .onDelete(perform: deleteRecordings) 
         }
         .navigationTitle("Notes")
+    }
+
+    private func deleteRecordings(at offsets: IndexSet) {
+        for index in offsets {
+            let recording = recordings[index]
+            viewContext.delete(recording)
+        }
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting recording: \(error.localizedDescription)")
+        }
     }
 }
 

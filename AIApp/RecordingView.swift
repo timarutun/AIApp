@@ -90,3 +90,6 @@ struct RecordingView: View {
     }
 }
 
+#Preview {
+    RecordingView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}
