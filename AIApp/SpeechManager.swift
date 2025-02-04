@@ -9,55 +9,46 @@ import Foundation
 import Speech
 
 class SpeechManager: ObservableObject {
-    private var speechRecognizer: SFSpeechRecognizer?
+    private let speechRecognizer = SFSpeechRecognizer()
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
-    
-    func requestSpeechRecognitionPermission(completion: @escaping (Bool) -> Void) {
-        SFSpeechRecognizer.requestAuthorization { status in
-            DispatchQueue.main.async {
-                completion(status == .authorized)
-            }
-        }
-    }
 
-    func startRecognition(language: String, onResult: @escaping (String) -> Void) {
-        speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language))
-
-        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
-            print("Speech recognition not available for \(language)")
+    func startRecognition(language: String = "en-US", onResult: @escaping (String) -> Void) {
+        guard let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language)), speechRecognizer.isAvailable else {
+            print("Speech recognition is not available for language: \(language)")
             return
         }
 
-        stopRecognition()
-
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        let inputNode = audioEngine.inputNode
-
-        guard let request = recognitionRequest else { return }
-        request.shouldReportPartialResults = true
-
-        recognitionTask = recognizer.recognitionTask(with: request) { result, error in
-            if let result = result {
-                onResult(result.bestTranscription.formattedString)
-            }
-
-            if error != nil {
-                self.stopRecognition()
-            }
-        }
-
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            request.append(buffer)
-        }
-
         do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+            let inputNode = audioEngine.inputNode
+            let recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+            recognitionRequest.shouldReportPartialResults = true
+
+            self.recognitionRequest = recognitionRequest
+            self.recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
+                if let result = result {
+                    let bestString = result.bestTranscription.formattedString
+                    onResult(bestString)
+                }
+                if error != nil {
+                    self.stopRecognition()
+                }
+            }
+
+            let recordingFormat = inputNode.outputFormat(forBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer, when) in
+                recognitionRequest.append(buffer)
+            }
+
             audioEngine.prepare()
             try audioEngine.start()
         } catch {
-            print("Error starting audio engine: \(error.localizedDescription)")
+            print("Error starting speech recognition: \(error.localizedDescription)")
         }
     }
 
@@ -69,4 +60,3 @@ class SpeechManager: ObservableObject {
         recognitionTask = nil
     }
 }
-
