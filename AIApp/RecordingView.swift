@@ -54,20 +54,33 @@ struct RecordingView: View {
                     .cornerRadius(10)
             }
 
-            Button(action: {
-                isRecording ? stopRecording() : startRecording()
-            }) {
-                Circle()
-                    .fill(isRecording ? Color.gray : Color.red)
-                    .frame(width: 80, height: 80)
-                    .overlay(
-                        Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                            .foregroundColor(.white)
-                            .font(.largeTitle)
-                    )
-            }
-            .shadow(radius: 10)
+            HStack {
+                Button(action: {
+                    isRecording ? stopRecording() : startRecording()
+                }) {
+                    Circle()
+                        .fill(isRecording ? Color.gray : Color.red)
+                        .frame(width: 80, height: 80)
+                        .overlay(
+                            Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                                .foregroundColor(.white)
+                                .font(.largeTitle)
+                        )
+                }
+                .shadow(radius: 10)
 
+                // Временная кнопка для отправки тестового запроса
+                Button(action: {
+                    sendTestRequest()
+                }) {
+                    Text("Send Test Request")
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+            }
+            
             Spacer()
         }
         .padding()
@@ -128,6 +141,25 @@ struct RecordingView: View {
         }
     }
 
+    private func sendTestRequest() {
+        let testText = "Сегодня у меня много дел, нужно будет купить молока и мяса, а еще зайти в спортзал, ну и выпить коктейль протеиновый."
+
+        isLoading = true
+        structuredText = nil
+
+        sendToOllama(text: testText) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let structured):
+                    structuredText = structured
+                case .failure(let error):
+                    print("AI Processing Error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     private func saveRecording(url: URL) {
         let newRecording = Recording(context: viewContext)
         newRecording.id = UUID()
@@ -154,14 +186,14 @@ struct RecordingView: View {
     }
 
     private func sendToOllama(text: String, completion: @escaping (Result<String, Error>) -> Void) {
-        let url = URL(string: "http://localhost:11434/api/generate")!  // Ollama API локально
+        let url = URL(string: "http://localhost:11434/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
             "model": "mistral",
-            "prompt": text
+            "prompt": "Проанализируй и структурируй следующую заметку: \(text)"
         ]
 
         do {
@@ -170,27 +202,38 @@ struct RecordingView: View {
 
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
+                    print("❌ Ошибка сети: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
+                
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("ℹ️ HTTP статус: \(httpResponse.statusCode)")
+                }
+
                 guard let data = data else {
-                    completion(.failure(NSError(domain: "No data received", code: -1, userInfo: nil)))
+                    print("❌ Нет данных от сервера")
+                    completion(.failure(NSError(domain: "No data", code: -1, userInfo: nil)))
                     return
                 }
 
                 do {
-                    if let jsonResponse = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                       let responseText = jsonResponse["response"] as? String {
+                    let jsonResponse = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+                    print("📩 Ответ сервера: \(jsonResponse ?? [:])")
+
+                    if let responseText = jsonResponse?["response"] as? String {
                         completion(.success(responseText))
                     } else {
-                        completion(.failure(NSError(domain: "Invalid Ollama response format", code: -1, userInfo: nil)))
+                        completion(.failure(NSError(domain: "Invalid response format", code: -1, userInfo: nil)))
                     }
                 } catch {
+                    print("❌ Ошибка парсинга JSON: \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             }
             task.resume()
         } catch {
+            print("❌ Ошибка создания JSON запроса: \(error.localizedDescription)")
             completion(.failure(error))
         }
     }
