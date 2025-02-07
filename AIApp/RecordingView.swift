@@ -193,7 +193,8 @@ struct RecordingView: View {
 
         let body: [String: Any] = [
             "model": "mistral",
-            "prompt": "Проанализируй и структурируй следующую заметку: \(text)"
+            "prompt": "Проанализируй и структурируй следующую заметку: \(text)",
+            "stream": false
         ]
 
         do {
