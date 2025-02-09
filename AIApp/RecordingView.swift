@@ -40,6 +40,7 @@ struct RecordingView: View {
                     .padding()
                     .background(Color.gray.opacity(0.2))
                     .cornerRadius(10)
+                    .animation(.easeInOut, value: transcribedText)
             }
 
             if isLoading {
@@ -52,6 +53,7 @@ struct RecordingView: View {
                     .padding()
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(10)
+                    .animation(.easeInOut, value: structuredText)
             }
 
             HStack {
@@ -69,7 +71,6 @@ struct RecordingView: View {
                 }
                 .shadow(radius: 10)
 
-                // Временная кнопка для отправки тестового запроса
                 Button(action: {
                     sendTestRequest()
                 }) {
@@ -144,8 +145,10 @@ struct RecordingView: View {
     private func sendTestRequest() {
         let testText = "Сегодня у меня много дел, нужно будет купить молока и мяса, а еще зайти в спортзал, ну и выпить коктейль протеиновый."
 
-        isLoading = true
+        // Показываем тестовый текст, как будто он был продиктован
+        transcribedText = testText
         structuredText = nil
+        isLoading = true
 
         sendToOllama(text: testText) { result in
             DispatchQueue.main.async {
