@@ -7,12 +7,17 @@
 
 import Foundation
 import Speech
+import AVFoundation
 
 class SpeechManager: ObservableObject {
-    private let speechRecognizer = SFSpeechRecognizer()
+    private let speechRecognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+
+    init(language: String = "en-US") {
+        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language))
+    }
 
     func startRecognition(language: String = "en-US", onResult: @escaping (String) -> Void) {
         guard let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language)), speechRecognizer.isAvailable else {
