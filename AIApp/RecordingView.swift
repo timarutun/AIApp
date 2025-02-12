@@ -23,13 +23,13 @@ struct RecordingView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Text("Press the button below to start recording your voice note.")
+            Text("Tap the button below to start recording a voice note.")
                 .font(.subheadline)
                 .foregroundStyle(.gray)
                 .multilineTextAlignment(.center)
                 .padding()
 
-            Text("Language: \(selectedLanguage == "en-US" ? "English" : "Русский")")
+            Text("Language: \(selectedLanguage == "en-US" ? "English" : "Russian")")
                 .font(.footnote)
                 .foregroundColor(.secondary)
 
@@ -85,7 +85,7 @@ struct RecordingView: View {
             Spacer()
         }
         .padding()
-        .navigationTitle("Record")
+        .navigationTitle("Recording")
     }
 
     private func startRecording() {
@@ -134,7 +134,7 @@ struct RecordingView: View {
                     case .success(let structured):
                         structuredText = structured
                     case .failure(let error):
-                        print("AI Processing Error: \(error.localizedDescription)")
+                        print("AI processing error: \(error.localizedDescription)")
                     }
                 }
             }
@@ -143,9 +143,9 @@ struct RecordingView: View {
     }
 
     private func sendTestRequest() {
-        let testText = "Сегодня у меня много дел, нужно будет купить молока и мяса, а еще зайти в спортзал, ну и выпить коктейль протеиновый."
+        let testText = "Today I have a lot to do: I need to buy milk and meat, go to the gym, and drink a protein shake."
 
-        // Показываем тестовый текст, как будто он был продиктован
+        // Simulate transcribed text as if it were dictated
         transcribedText = testText
         structuredText = nil
         isLoading = true
@@ -157,7 +157,7 @@ struct RecordingView: View {
                 case .success(let structured):
                     structuredText = structured
                 case .failure(let error):
-                    print("AI Processing Error: \(error.localizedDescription)")
+                    print("AI processing error: \(error.localizedDescription)")
                 }
             }
         }
@@ -196,7 +196,7 @@ struct RecordingView: View {
 
         let body: [String: Any] = [
             "model": "mistral",
-            "prompt": "Проанализируй и структурируй следующую заметку: \(text)",
+            "prompt": "Analyze and structure the following note: \(text)",
             "stream": false
         ]
 
@@ -206,24 +206,24 @@ struct RecordingView: View {
 
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    print("❌ Ошибка сети: \(error.localizedDescription)")
+                    print("❌ Network error: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    print("ℹ️ HTTP статус: \(httpResponse.statusCode)")
+                    print("ℹ️ HTTP status: \(httpResponse.statusCode)")
                 }
 
                 guard let data = data else {
-                    print("❌ Нет данных от сервера")
+                    print("❌ No data from server")
                     completion(.failure(NSError(domain: "No data", code: -1, userInfo: nil)))
                     return
                 }
 
                 do {
                     let jsonResponse = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-                    print("📩 Ответ сервера: \(jsonResponse ?? [:])")
+                    print("📩 Server response: \(jsonResponse ?? [:])")
 
                     if let responseText = jsonResponse?["response"] as? String {
                         completion(.success(responseText))
@@ -231,18 +231,14 @@ struct RecordingView: View {
                         completion(.failure(NSError(domain: "Invalid response format", code: -1, userInfo: nil)))
                     }
                 } catch {
-                    print("❌ Ошибка парсинга JSON: \(error.localizedDescription)")
+                    print("❌ JSON parsing error: \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             }
             task.resume()
         } catch {
-            print("❌ Ошибка создания JSON запроса: \(error.localizedDescription)")
+            print("❌ JSON request creation error: \(error.localizedDescription)")
             completion(.failure(error))
         }
     }
-}
-
-#Preview {
-    RecordingView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
