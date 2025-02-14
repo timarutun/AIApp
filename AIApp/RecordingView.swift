@@ -189,10 +189,11 @@ struct RecordingView: View {
     }
 
     private func sendToOllama(text: String, completion: @escaping (Result<String, Error>) -> Void) {
-        let url = URL(string: "http://localhost:11434/api/generate")!
+        let url = URL(string: "http://127.0.0.1:11434/api/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60
 
         let body: [String: Any] = [
             "model": "mistral",
